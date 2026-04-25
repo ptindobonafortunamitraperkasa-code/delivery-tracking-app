@@ -52,7 +52,65 @@
   function editDelivery(id){let d=deliveries.find(x=>x.id===id); if(!d)return; editId=d.id; resi.value=d.resi||'';tanggal.value=d.tanggal||today();penerima.value=d.penerima||'';hp.value=d.hp||'';alamat.value=d.alamat||'';supir.value=d.supir||'';status.value=d.status||'Menunggu Pickup';catatan.value=d.catatan||'';setItems(d.items||[]);showSection('add',document.querySelectorAll('.nav button')[1])}
   async function deleteDelivery(id){if(!confirm('Hapus data ini?'))return; try{await removeDelivery(id);await loadDeliveries()}catch(e){alert('Gagal hapus: '+e.message)}}
   async function importPDF(e){let file=e.target.files[0];if(!file)return;pdfStatus.innerText='Sedang membaca PDF...';try{let buffer=await file.arrayBuffer();let pdf=await pdfjsLib.getDocument({data:buffer}).promise;let text='';for(let p=1;p<=pdf.numPages;p++){let page=await pdf.getPage(p);let content=await page.getTextContent();text+=content.items.map(i=>i.str).join(' ')+'\n'}parsePdfText(text);pdfStatus.innerText='PDF berhasil dibaca. Cek kembali sebelum simpan.'}catch(err){pdfStatus.innerText='Gagal membaca PDF. Pastikan bukan hasil scan/foto.'}}
-  function parsePdfText(text){let clean=text.replace(/\s+/g,' ').trim();let inv=clean.match(/(?:invoice|inv|resi|sj)[:\s#-]*([A-Z0-9\/\-\.]+)/i);let phone=clean.match(/(08\d{8,13}|\+62\d{8,13})/);let receiver=clean.match(/(?:penerima|customer|nama)[:\s-]*([A-Za-zÀ-ÿ .']{3,40})/i);let address=clean.match(/(?:alamat|tujuan|address)[:\s-]*(.{10,160}?)(?:telepon|telp|hp|barang|item|produk|qty|jumlah|$)/i);if(inv)resi.value=inv[1];if(phone)hp.value=phone[1];if(receiver)penerima.value=receiver[1].trim();if(address)alamat.value=address[1].trim();let lines=text.split(/\n|\r/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);let items=[];for(let line of lines){if(/(helm|barang|produk|item|unit|pcs|buah)/i.test(line)){let q=line.match(/(?:qty|jumlah)?\s*(\d+)\s*(?:pcs|unit|buah)?\b/i);let qty=q?q[1]:'';let name=line.replace(/qty|jumlah|pcs|unit|buah/ig,'').replace(/\b\d+\b/g,'').replace(/nama barang|barang|produk|item/ig,'').trim();if(name.length>3&&!/invoice|alamat|penerima|telepon|total|harga/i.test(name))items.push({name,qty})}} if(items.length)setItems(items.slice(0,20))}
+function parsePdfText(text){
+  let clean = text.replace(/\s+/g,' ').trim();
+
+  let phone = clean.match(/(08\d{8,13}|\+62\d{8,13})/);
+  if(phone) hp.value = phone[1];
+
+  let kota = clean.match(/\b(AMUNTAI|KANDANGAN|PALANGKARAYA|BANJARMASIN|BARABAI|TANJUNG)\b/i);
+  if(kota) alamat.value = kota[1].toUpperCase();
+
+  let lines = text
+    .split(/\n|\r/)
+    .map(x => x.replace(/\s+/g,' ').trim())
+    .filter(Boolean);
+
+  let items = [];
+
+  for(let line of lines){
+    let lower = line.toLowerCase();
+
+    if(
+      lower.includes('item jml') ||
+      lower.includes('satuan total') ||
+      lower.includes('pot. harga') ||
+      lower.includes('nama') ||
+      lower.includes('alamat') ||
+      lower.includes('telepon') ||
+      lower.includes('total') ||
+      lower.includes('tanggal')
+    ){
+      continue;
+    }
+
+    let qtyMatch = line.match(/\b(\d+)\s*(pcs|unit|buah|set|lusin)?\b/i);
+
+    if(qtyMatch && line.length > 5){
+      let qty = qtyMatch[1];
+
+      let name = line
+        .replace(/\b\d+\b/g,'')
+        .replace(/\bpcs\b|\bunit\b|\bbuah\b|\bset\b|\blusin\b/gi,'')
+        .replace(/rp\.?\s?\d[\d.,]*/gi,'')
+        .replace(/\d[\d.,]*/g,'')
+        .trim();
+
+      if(name.length >= 3){
+        items.push({
+          name: name,
+          qty: qty
+        });
+      }
+    }
+  }
+
+  if(items.length){
+    setItems(items.slice(0,30));
+  }else{
+    alert('PDF terbaca, tapi data barang belum bisa dikenali otomatis. Coba cek format PDF atau kirim contoh PDF-nya.');
+  }
+}
   function tableHTML(data,act=true){if(!data.length)return'<p class="small">Belum ada data.</p>';return `<table><thead><tr><th>Resi</th><th>Penerima</th><th>Barang</th><th>Supir</th><th>Status/Bukti</th><th>Update</th>${act?'<th>Aksi</th>':''}</tr></thead><tbody>${data.map(d=>`<tr><td><b>${esc(d.resi)}</b><br><span class="small">${esc(d.tanggal)}</span></td><td>${esc(d.penerima)}<br><span class="small">${esc(d.hp)}<br>${esc(d.alamat)}</span></td><td>${(d.items||[]).map(i=>`${esc(i.name)} <b>x${esc(i.qty||'')}</b>`).join('<br>')}</td><td>${esc(d.supir||'-')}</td><td>${badge(d.status)}${d.proof_photo?'<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d.proof_photo+'" style="margin-top:8px;width:90px;border-radius:10px;border:1px solid #e5e7eb"></a>':''}</td><td><span class="small">${d.last_update?new Date(d.last_update).toLocaleString('id-ID'):'-'}</span></td>${act?`<td><button class="btn secondary" onclick="editDelivery('${d.id}')">Edit</button> <button class="btn danger" onclick="deleteDelivery('${d.id}')">Hapus</button></td>`:''}</tr>`).join('')}</tbody></table>`}
   function renderStats(){statTotal.innerText=deliveries.length;statJalan.innerText=deliveries.filter(d=>d.status==='Dalam Perjalanan').length;statSampai.innerText=deliveries.filter(d=>d.status==='Sudah Sampai').length;statGagal.innerText=deliveries.filter(d=>d.status==='Gagal Kirim').length}
   function renderLatest(){latestTable.innerHTML=tableHTML(deliveries.slice(0,5),false)}
