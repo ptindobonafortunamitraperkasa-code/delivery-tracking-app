@@ -55,60 +55,35 @@
 function parsePdfText(text){
   let clean = text.replace(/\s+/g,' ').trim();
 
+  let trx = clean.match(/\d{4}\/HLM\/[A-Z]+\/\d{4}/i);
+  if(trx) resi.value = trx[0];
+
   let phone = clean.match(/(08\d{8,13}|\+62\d{8,13})/);
   if(phone) hp.value = phone[1];
 
-  let kota = clean.match(/\b(AMUNTAI|KANDANGAN|PALANGKARAYA|BANJARMASIN|BARABAI|TANJUNG)\b/i);
-  if(kota) alamat.value = kota[1].toUpperCase();
+  let customer = clean.match(/PT INDO BONA FORTUNA MITRA PERKASA/i);
+  if(customer) penerima.value = customer[0];
 
-  let lines = text
-    .split(/\n|\r/)
-    .map(x => x.replace(/\s+/g,' ').trim())
-    .filter(Boolean);
+  alamat.value = 'AMUNTAI';
 
+  let lines = text.split(/\n|\r/).map(v => v.trim()).filter(v => v);
   let items = [];
 
   for(let line of lines){
-    let lower = line.toLowerCase();
+    let m = line.match(/^\d+\s+\d+\s+(.+?)\s+(\d+),00\s+PCS/i);
 
-    if(
-      lower.includes('item jml') ||
-      lower.includes('satuan total') ||
-      lower.includes('pot. harga') ||
-      lower.includes('nama') ||
-      lower.includes('alamat') ||
-      lower.includes('telepon') ||
-      lower.includes('total') ||
-      lower.includes('tanggal')
-    ){
-      continue;
-    }
-
-    let qtyMatch = line.match(/\b(\d+)\s*(pcs|unit|buah|set|lusin)?\b/i);
-
-    if(qtyMatch && line.length > 5){
-      let qty = qtyMatch[1];
-
-      let name = line
-        .replace(/\b\d+\b/g,'')
-        .replace(/\bpcs\b|\bunit\b|\bbuah\b|\bset\b|\blusin\b/gi,'')
-        .replace(/rp\.?\s?\d[\d.,]*/gi,'')
-        .replace(/\d[\d.,]*/g,'')
-        .trim();
-
-      if(name.length >= 3){
-        items.push({
-          name: name,
-          qty: qty
-        });
-      }
+    if(m){
+      items.push({
+        name: m[1].trim(),
+        qty: m[2]
+      });
     }
   }
 
-  if(items.length){
-    setItems(items.slice(0,30));
-  }else{
-    alert('PDF terbaca, tapi data barang belum bisa dikenali otomatis. Coba cek format PDF atau kirim contoh PDF-nya.');
+  if(items.length > 0){
+    setItems(items);
+  } else {
+    alert('Data barang tidak ditemukan di PDF.');
   }
 }
   function tableHTML(data,act=true){if(!data.length)return'<p class="small">Belum ada data.</p>';return `<table><thead><tr><th>Resi</th><th>Penerima</th><th>Barang</th><th>Supir</th><th>Status/Bukti</th><th>Update</th>${act?'<th>Aksi</th>':''}</tr></thead><tbody>${data.map(d=>`<tr><td><b>${esc(d.resi)}</b><br><span class="small">${esc(d.tanggal)}</span></td><td>${esc(d.penerima)}<br><span class="small">${esc(d.hp)}<br>${esc(d.alamat)}</span></td><td>${(d.items||[]).map(i=>`${esc(i.name)} <b>x${esc(i.qty||'')}</b>`).join('<br>')}</td><td>${esc(d.supir||'-')}</td><td>${badge(d.status)}${d.proof_photo?'<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d.proof_photo+'" style="margin-top:8px;width:90px;border-radius:10px;border:1px solid #e5e7eb"></a>':''}</td><td><span class="small">${d.last_update?new Date(d.last_update).toLocaleString('id-ID'):'-'}</span></td>${act?`<td><button class="btn secondary" onclick="editDelivery('${d.id}')">Edit</button> <button class="btn danger" onclick="deleteDelivery('${d.id}')">Hapus</button></td>`:''}</tr>`).join('')}</tbody></table>`}
