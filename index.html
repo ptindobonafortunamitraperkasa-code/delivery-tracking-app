@@ -20,7 +20,13 @@
   <main class="main">
     <div class="topbar"><h1 id="pageTitle">Dashboard</h1><div class="small"><span id="connDot" class="status-dot"></span><span id="connText">Mengecek Supabase...</span></div></div>
     <section id="dashboard" class="section active"><div class="grid"><div class="card"><div class="stat-title">Total Pengiriman</div><div class="stat-num" id="statTotal">0</div></div><div class="card"><div class="stat-title">Dalam Perjalanan</div><div class="stat-num" id="statJalan">0</div></div><div class="card"><div class="stat-title">Sudah Sampai</div><div class="stat-num" id="statSampai">0</div></div><div class="card"><div class="stat-title">Gagal Kirim</div><div class="stat-num" id="statGagal">0</div></div></div><div class="card"><h3>Pengiriman Terbaru</h3><div id="latestTable"></div></div></section>
-    <section id="add" class="section"><div class="card"><h3>Tambah Pengiriman</h3><div class="notice">Upload PDF invoice/surat jalan yang teksnya bisa dicopy. Aplikasi akan mencoba membaca data barang otomatis.</div><div class="actions"><input type="file" id="pdfInput" accept="application/pdf" style="max-width:360px" onchange="importPDF(event)"><button class="btn secondary" onclick="clearForm()">Kosongkan Form</button></div><p class="small" id="pdfStatus"></p><div class="form-grid" style="margin-top:14px"><div><label>No Resi / Invoice</label><input id="resi" placeholder="AUTO-001"></div><div><label>Tanggal Kirim</label><input id="tanggal" type="date"></div><div><label>Nama Penerima</label><input id="penerima" placeholder="Nama penerima"></div><div><label>No HP</label><input id="hp" placeholder="08xxxxxxxxxx"></div><div class="full"><label>Alamat Tujuan</label><textarea id="alamat" placeholder="Alamat lengkap"></textarea></div><div><label>Nama Supir</label><input id="supir" placeholder="Nama supir"></div><div><label>Status</label><select id="status"><option>Menunggu Pickup</option><option>Barang Diambil</option><option>Dalam Perjalanan</option><option>Sudah Sampai</option><option>Gagal Kirim</option></select></div><div class="full"><label>Data Barang</label><div id="itemsContainer" class="items-box"></div><button class="btn secondary" type="button" onclick="addItem()">+ Tambah Barang</button></div><div class="full"><label>Catatan</label><textarea id="catatan" placeholder="Catatan tambahan"></textarea></div></div><div class="actions"><button class="btn success" onclick="saveDelivery()">Simpan Pengiriman</button></div></div></section>
+    <section id="add" class="section"><div class="card"><h3>Tambah Pengiriman</h3><div class="notice">Upload PDF invoice/surat jalan yang teksnya bisa dicopy. Aplikasi akan mencoba membaca data barang otomatis.</div><div class="actions"><input type="file" id="pdfInput" accept="application/pdf" style="max-width:360px" onchange="importPDF(event)"><button class="btn secondary" onclick="clearForm()">Kosongkan Form</button></div><p class="small" id="pdfStatus"></p><div class="form-grid" style="margin-top:14px"><div><label>No Resi / Invoice</label><input id="resi" placeholder="AUTO-001"></div><div><label>Tanggal Kirim</label><input id="tanggal" type="date"></div><div><label>Nama Penerima</label><input id="penerima" placeholder="Nama penerima"></div><div><label>No HP</label><input id="hp" placeholder="08xxxxxxxxxx"></div><div class="full"><label>Alamat Tujuan</label><textarea id="alamat" placeholder="Alamat lengkap"></textarea></div><div><label>Nama Supir</label><input id="supir" placeholder="Nama supir"></div><div><label>Status</label><select id="status"><option>Menunggu Pickup</option><option>Barang Diambil</option><option>Dalam Perjalanan</option><option>Sudah Sampai</option><option>Gagal Kirim</option></select></div><div class="full"><label>Data Barang</label><div id="itemsContainer" class="items-box"></div><button class="btn secondary" type="button" onclick="addItem()">+ Tambah Barang</button></div><div class="full"><label>Catatan</label><textarea id="catatan" placeholder="Catatan tambahan"></textarea></div>
+
+<div class="full">
+  <label>Foto / PDF Surat Jalan</label>
+  <input type="file" id="suratJalanInput" accept="image/*,application/pdf">
+  <p class="small">Upload surat jalan. Barang bisa diisi manual.</p>
+</div></div><div class="actions"><button class="btn success" onclick="saveDelivery()">Simpan Pengiriman</button></div></div></section>
     <section id="list" class="section"><div class="card"><h3>Data Pengiriman</h3><div class="form-grid"><div><label>Cari</label><input id="search" placeholder="Cari resi/nama/supir/barang" oninput="renderList()"></div><div><label>Filter Status</label><select id="filterStatus" onchange="renderList()"><option value="">Semua Status</option><option>Menunggu Pickup</option><option>Barang Diambil</option><option>Dalam Perjalanan</option><option>Sudah Sampai</option><option>Gagal Kirim</option></select></div></div><div style="margin-top:14px" id="deliveryTable"></div></div></section>
     <section id="tracking" class="section"><div class="card"><h3>Live Tracking Supir</h3><div class="notice">Maps membaca lokasi terakhir supir dari Supabase.</div><div class="actions"><button class="btn secondary" onclick="loadDeliveries()">Refresh Data</button></div><div id="map"></div></div></section>
     <section id="driver" class="section"><div class="card driver-panel"><h3>Mode Supir</h3><label>Pilih Pengiriman</label><select id="driverDelivery" onchange="loadDriverJob()"></select><div id="driverJobBox" style="margin-top:14px"></div><div class="actions"><button class="btn warning" onclick="driverSetStatus('Barang Diambil')">Barang Diambil</button><button class="btn" onclick="driverSetStatus('Dalam Perjalanan')">Dalam Perjalanan</button><button class="btn success" onclick="driverSetStatus('Sudah Sampai')">Sampai</button><button class="btn danger" onclick="driverSetStatus('Gagal Kirim')">Gagal</button></div><div class="actions"><button class="btn" onclick="updateDriverLocation()">Update Lokasi Sekarang</button><button class="btn secondary" onclick="startAutoLocation()">Mulai Auto GPS</button><button class="btn secondary" onclick="stopAutoLocation()">Stop Auto GPS</button></div><p class="small" id="gpsInfo">GPS belum aktif.</p><div style="margin-top:14px"><label>Bukti Foto Barang Diterima</label><input type="file" id="proofPhotoInput" accept="image/*" capture="environment" onchange="saveProofPhoto(event)"><p class="small">Supir foto barang/penerima saat barang sudah sampai.</p><div id="proofPreview"></div></div></div></section>
@@ -48,7 +54,62 @@
   function getItems(){return [...document.querySelectorAll('.item-row')].map(r=>({name:r.querySelector('.item-name').value.trim(),qty:r.querySelector('.item-qty').value.trim()})).filter(i=>i.name||i.qty)}
   function setItems(items){itemsContainer.innerHTML=''; if(!items||!items.length)addItem(); else items.forEach(i=>addItem(i.name,i.qty))}
   function clearForm(){editId=null;['resi','penerima','hp','alamat','supir','catatan'].forEach(id=>document.getElementById(id).value='');tanggal.value=today();status.value='Menunggu Pickup';setItems([]);pdfStatus.innerText=''}
-  async function saveDelivery(){if(!db){alert('Isi SUPABASE_URL dan SUPABASE_ANON_KEY dulu di kode.');return} const row={resi:resi.value.trim()||'AUTO-'+(deliveries.length+1).toString().padStart(4,'0'),tanggal:tanggal.value||today(),penerima:penerima.value.trim(),hp:hp.value.trim(),alamat:alamat.value.trim(),supir:supir.value.trim(),status:status.value,items:getItems(),catatan:catatan.value.trim(),last_update:new Date().toISOString()}; if(!row.penerima&&!row.alamat&&row.items.length===0){alert('Minimal isi penerima/alamat/barang dulu.');return} try{if(editId)await updateDelivery(editId,row);else await insertDelivery(row);clearForm();await loadDeliveries();alert('Pengiriman berhasil disimpan online.');showSection('list',document.querySelectorAll('.nav button')[2])}catch(e){alert('Gagal simpan: '+e.message)}}
+async function saveDelivery(){
+  if(!db){
+    alert('Isi SUPABASE_URL dan SUPABASE_ANON_KEY dulu di kode.');
+    return;
+  }
+
+  const row = {
+    resi: resi.value.trim() || 'AUTO-' + (deliveries.length+1).toString().padStart(4,'0'),
+    tanggal: tanggal.value || today(),
+    penerima: penerima.value.trim(),
+    hp: hp.value.trim(),
+    alamat: alamat.value.trim(),
+    supir: supir.value.trim(),
+    status: status.value,
+    items: getItems(),
+    catatan: catatan.value.trim(),
+    last_update: new Date().toISOString()
+  };
+
+  if(!row.penerima && !row.alamat && row.items.length===0){
+    alert('Minimal isi penerima/alamat/barang dulu.');
+    return;
+  }
+
+  try{
+    let sj = document.getElementById('suratJalanInput')?.files[0];
+
+    if(sj){
+      let ext = sj.name.split('.').pop();
+      let path = 'surat-jalan-' + Date.now() + '.' + ext;
+
+      let up = await db.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, sj, { cacheControl:'3600', upsert:false });
+
+      if(up.error) throw up.error;
+
+      let url = db.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+      row.surat_jalan_photo = url;
+    }
+
+    if(editId){
+      await updateDelivery(editId,row);
+    }else{
+      await insertDelivery(row);
+    }
+
+    clearForm();
+    await loadDeliveries();
+    alert('Pengiriman berhasil disimpan online.');
+    showSection('list',document.querySelectorAll('.nav button')[2]);
+
+  }catch(e){
+    alert('Gagal simpan: ' + e.message);
+  }
+}
   function editDelivery(id){let d=deliveries.find(x=>x.id===id); if(!d)return; editId=d.id; resi.value=d.resi||'';tanggal.value=d.tanggal||today();penerima.value=d.penerima||'';hp.value=d.hp||'';alamat.value=d.alamat||'';supir.value=d.supir||'';status.value=d.status||'Menunggu Pickup';catatan.value=d.catatan||'';setItems(d.items||[]);showSection('add',document.querySelectorAll('.nav button')[1])}
   async function deleteDelivery(id){if(!confirm('Hapus data ini?'))return; try{await removeDelivery(id);await loadDeliveries()}catch(e){alert('Gagal hapus: '+e.message)}}
   async function importPDF(e){let file=e.target.files[0];if(!file)return;pdfStatus.innerText='Sedang membaca PDF...';try{let buffer=await file.arrayBuffer();let pdf=await pdfjsLib.getDocument({data:buffer}).promise;let text='';for(let p=1;p<=pdf.numPages;p++){let page=await pdf.getPage(p);let content=await page.getTextContent();text+=content.items.map(i=>i.str).join(' ')+'\n'}parsePdfText(text);pdfStatus.innerText='PDF berhasil dibaca. Cek kembali sebelum simpan.'}catch(err){pdfStatus.innerText='Gagal membaca PDF. Pastikan bukan hasil scan/foto.'}}
