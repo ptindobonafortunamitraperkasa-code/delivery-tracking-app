@@ -551,6 +551,60 @@ ${d.proof_photo ? '<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d
 
   function gmapsSearchUrl(lat,lng){return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
   function gmapsDirectionUrl(lat,lng){return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+  function gmapsRouteUrl(fromLat,fromLng,toLat,toLng){return `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}`}
+  const DESTINATION_POINTS = {
+    'sampit': {name:'Sampit', lat:-2.5315, lng:112.9496},
+    'kota sampit': {name:'Sampit', lat:-2.5315, lng:112.9496},
+    'palangkaraya': {name:'Palangka Raya', lat:-2.2096, lng:113.9213},
+    'palangka raya': {name:'Palangka Raya', lat:-2.2096, lng:113.9213},
+    'banjarmasin': {name:'Banjarmasin', lat:-3.3186, lng:114.5944},
+    'pangkalan bun': {name:'Pangkalan Bun', lat:-2.6833, lng:111.6167},
+    'amuntai': {name:'Amuntai', lat:-2.4177, lng:115.2494},
+    'kandangan': {name:'Kandangan', lat:-2.7867, lng:115.2567},
+    'tamiang layang': {name:'Tamiang Layang', lat:-2.1333, lng:115.1667},
+    'tamiyang layang': {name:'Tamiang Layang', lat:-2.1333, lng:115.1667},
+    'muara teweh': {name:'Muara Teweh', lat:-0.9471, lng:114.8939},
+    'kapuas': {name:'Kuala Kapuas', lat:-3.0091, lng:114.3876},
+    'kuala kapuas': {name:'Kuala Kapuas', lat:-3.0091, lng:114.3876},
+    'pulang pisau': {name:'Pulang Pisau', lat:-2.7481, lng:114.2406},
+    'kasongan': {name:'Kasongan', lat:-1.8952, lng:113.3877},
+    'pangkalan banteng': {name:'Pangkalan Banteng', lat:-2.5141, lng:111.7420}
+  };
+  function getDestinationPoint(d){
+    let candidates=[];
+    if(d?.route_name) candidates.push(d.route_name);
+    if(d?.alamat) candidates.push(d.alamat);
+    (d?.items||[]).forEach(i=>{ if(i.destination) candidates.push(i.destination); });
+    let text=candidates.join(' ').toLowerCase();
+    for(let key of Object.keys(DESTINATION_POINTS)){
+      if(text.includes(key)) return DESTINATION_POINTS[key];
+    }
+    return null;
+  }
+  function distanceKm(lat1,lng1,lat2,lng2){
+    lat1=toNum(lat1);lng1=toNum(lng1);lat2=toNum(lat2);lng2=toNum(lng2);
+    if(!lat1||!lng1||!lat2||!lng2)return 0;
+    const R=6371, toRad=x=>x*Math.PI/180;
+    let dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+    let a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  function etaText(km){
+    km=toNum(km); if(!km)return '-';
+    let speed=45; // estimasi aman untuk rute Kalimantan, bukan data traffic real
+    let min=Math.round((km/speed)*60);
+    let h=Math.floor(min/60), m=min%60;
+    return (h? h+' jam ':'') + (m? m+' menit':'');
+  }
+  function destinationInfoHTML(d){
+    let dest=getDestinationPoint(d), lat=toNum(d.lat), lng=toNum(d.lng);
+    if(!dest) return '<p class="small">Titik tujuan belum dikenali. Isi rute dengan nama kota, contoh: Sampit, Palangka Raya, Banjarmasin.</p>';
+    let km=(lat&&lng)?distanceKm(lat,lng,dest.lat,dest.lng):0;
+    return `<p><b>Tujuan:</b> ${esc(dest.name)}<br><b>Sisa jarak:</b> ${km?one(km)+' km':'Menunggu GPS supir'}<br><b>Estimasi tiba:</b> ${km?etaText(km):'-'}<br><span class="small">Estimasi gratis memakai jarak garis lurus. Untuk rute jalan raya super akurat perlu API routing.</span></p>`;
+  }
+  function createDestIcon(){
+    return L.divIcon({className:'',html:'<div class="customer-pin">🎯</div>',iconSize:[42,42],iconAnchor:[21,21],popupAnchor:[0,-18]});
+  }
   function createDriverIcon(){
     return L.divIcon({className:'',html:'<div class="driver-pin">🚚</div>',iconSize:[42,42],iconAnchor:[21,21],popupAnchor:[0,-18]});
   }
@@ -559,9 +613,16 @@ ${d.proof_photo ? '<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d
   }
   function mapInfoHTML(d,forCustomer=false){
     let lat=toNum(d.lat), lng=toNum(d.lng);
+    let dest=getDestinationPoint(d);
+    let km=(lat&&lng&&dest)?distanceKm(lat,lng,dest.lat,dest.lng):0;
     let update=d.last_update?new Date(d.last_update).toLocaleString('id-ID'):'Belum ada update';
-    let nav=lat&&lng?`<a class="map-btn" href="${gmapsDirectionUrl(lat,lng)}" target="_blank">Buka Google Maps</a><a class="map-btn secondary" href="${gmapsSearchUrl(lat,lng)}" target="_blank">Lihat Titik</a>`:'';
-    return `<div class="map-info-card"><h4>${forCustomer?'Tracking Pengiriman':'Info Supir'}</h4><p><b>${esc(d.supir||'Supir')}</b> · ${esc(d.resi||'-')}<br>${esc(d.penerima||'-')}<br>Status: ${d.status||'-'}</p><div class="map-kpi-row"><div class="map-kpi"><span>Update</span><b>${update}</b></div><div class="map-kpi"><span>Koordinat</span><b>${lat&&lng?one(lat)+', '+one(lng):'-'}</b></div></div><div class="map-btn-row">${nav}</div></div>`;
+    let nav='';
+    if(lat&&lng&&dest){
+      nav=`<a class="map-btn" href="${gmapsRouteUrl(lat,lng,dest.lat,dest.lng)}" target="_blank">Navigasi ke Tujuan</a><a class="map-btn secondary" href="${gmapsSearchUrl(lat,lng)}" target="_blank">Titik Supir</a>`;
+    }else if(lat&&lng){
+      nav=`<a class="map-btn" href="${gmapsDirectionUrl(lat,lng)}" target="_blank">Buka Google Maps</a><a class="map-btn secondary" href="${gmapsSearchUrl(lat,lng)}" target="_blank">Lihat Titik</a>`;
+    }
+    return `<div class="map-info-card"><h4>${forCustomer?'Tracking Pengiriman':'Info Supir'}</h4><p><b>${esc(d.supir||'Supir')}</b> · ${esc(d.resi||'-')}<br>${esc(d.penerima||'-')}<br>Status: ${d.status||'-'}</p>${destinationInfoHTML(d)}<div class="map-kpi-row"><div class="map-kpi"><span>Sisa Jarak</span><b>${km?one(km)+' km':'-'}</b></div><div class="map-kpi"><span>Estimasi</span><b>${km?etaText(km):'-'}</b></div><div class="map-kpi"><span>Update</span><b>${update}</b></div><div class="map-kpi"><span>Koordinat</span><b>${lat&&lng?one(lat)+', '+one(lng):'-'}</b></div></div><div class="map-btn-row">${nav}</div></div>`;
   }
 
   function initCustomerMap(d){
@@ -569,15 +630,22 @@ ${d.proof_photo ? '<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d
       let el=document.getElementById('customerMap');
       if(!el)return;
       el.classList.add('premium-map');
+      let dest=getDestinationPoint(d);
       if(!d.lat||!d.lng){
         el.innerHTML='<div class="notice" style="margin:14px">Lokasi supir belum tersedia. Minta supir aktifkan Auto GPS dari HP supir.</div>';
         let info=document.getElementById('customerMapInfo'); if(info) info.innerHTML=mapInfoHTML(d,true);
         return;
       }
       if(customerMap){customerMap.remove();customerMap=null}
-      customerMap=L.map('customerMap',{zoomControl:true}).setView([d.lat,d.lng],15);
+      let center=dest?[(toNum(d.lat)+dest.lat)/2,(toNum(d.lng)+dest.lng)/2]:[d.lat,d.lng];
+      customerMap=L.map('customerMap',{zoomControl:true}).setView(center, dest?8:15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(customerMap);
-      L.marker([d.lat,d.lng],{icon:createDriverIcon()}).addTo(customerMap).bindPopup(`<b>${esc(d.supir||'Supir')}</b><br>${esc(d.resi||'-')}<br>Status: ${esc(d.status||'-')}<br><a href="${gmapsDirectionUrl(d.lat,d.lng)}" target="_blank">Buka Google Maps</a>`).openPopup();
+      let driverMarker=L.marker([d.lat,d.lng],{icon:createDriverIcon()}).addTo(customerMap).bindPopup(`<b>${esc(d.supir||'Supir')}</b><br>${esc(d.resi||'-')}<br>Status: ${esc(d.status||'-')}`).openPopup();
+      if(dest){
+        let destMarker=L.marker([dest.lat,dest.lng],{icon:createDestIcon()}).addTo(customerMap).bindPopup(`<b>Tujuan: ${esc(dest.name)}</b><br>Sisa jarak: ${one(distanceKm(d.lat,d.lng,dest.lat,dest.lng))} km`);
+        let line=L.polyline([[d.lat,d.lng],[dest.lat,dest.lng]],{weight:4,opacity:.8,dashArray:'10,8'}).addTo(customerMap);
+        customerMap.fitBounds(line.getBounds(),{padding:[40,40]});
+      }
       let info=document.getElementById('customerMapInfo'); if(info) info.innerHTML=mapInfoHTML(d,true);
       setTimeout(()=>customerMap.invalidateSize(),200);
     },300)
@@ -586,18 +654,26 @@ ${d.proof_photo ? '<br><a href="'+d.proof_photo+'" target="_blank"><img src="'+d
   function initMap(){
     let el=document.getElementById('map'); if(el) el.classList.add('premium-map');
     if(!map){
-      map=L.map('map',{zoomControl:true}).setView([-2.2096,113.9213],13);
+      map=L.map('map',{zoomControl:true}).setView([-2.2096,113.9213],7);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
     }
     markers.forEach(m=>map.removeLayer(m));markers=[];
     let loc=deliveries.filter(d=>d.lat&&d.lng);
     loc.forEach(d=>{
-      let mk=L.marker([d.lat,d.lng],{icon:createDriverIcon()}).addTo(map).bindPopup(`<b>${esc(d.supir||'Supir')}</b><br>${esc(d.resi)}<br>${esc(d.penerima)}<br>${esc(d.status)}<br><a href="${gmapsDirectionUrl(d.lat,d.lng)}" target="_blank">Buka Google Maps</a>`);
+      let dest=getDestinationPoint(d);
+      let mk=L.marker([d.lat,d.lng],{icon:createDriverIcon()}).addTo(map).bindPopup(`<b>${esc(d.supir||'Supir')}</b><br>${esc(d.resi)}<br>${esc(d.penerima)}<br>${esc(d.status)}${dest?'<br>Sisa: '+one(distanceKm(d.lat,d.lng,dest.lat,dest.lng))+' km':''}<br><a href="${dest?gmapsRouteUrl(d.lat,d.lng,dest.lat,dest.lng):gmapsDirectionUrl(d.lat,d.lng)}" target="_blank">Buka Google Maps</a>`);
       markers.push(mk);
+      if(dest){
+        let dm=L.marker([dest.lat,dest.lng],{icon:createDestIcon()}).addTo(map).bindPopup(`<b>Tujuan: ${esc(dest.name)}</b>`); markers.push(dm);
+        let line=L.polyline([[d.lat,d.lng],[dest.lat,dest.lng]],{weight:4,opacity:.55,dashArray:'10,8'}).addTo(map); markers.push(line);
+      }
     });
     let info=document.getElementById('adminMapInfo');
     if(info) info.innerHTML=loc.length?mapInfoHTML(loc[0],false):'<div class="map-info-card"><h4>Belum ada lokasi</h4><p>Minta supir buka Mode Supir dari HP lalu klik Mulai Auto GPS.</p></div>';
-    if(loc.length)map.setView([loc[0].lat,loc[0].lng],13);
+    if(loc.length){
+      let group=L.featureGroup(markers.filter(m=>m.getBounds || m.getLatLng));
+      try{map.fitBounds(group.getBounds(),{padding:[50,50]})}catch(e){map.setView([loc[0].lat,loc[0].lng],13)}
+    }
     setTimeout(()=>map.invalidateSize(),200)
   }
 
