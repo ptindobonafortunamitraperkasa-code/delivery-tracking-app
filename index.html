@@ -44,7 +44,8 @@
   const isConfigured = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
   const db = isConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  let deliveries = [], histories = [], editId = null, map, markers = [], gpsTimer = null;
+  let deliveries = [], histories = [], editId = null, map, markers = [], gpsTimer = null, gpsWatchId = null, customerMap = null;
+  let autoGpsEnabled = localStorage.getItem('driverAutoGps') === '1';
   function today(){return new Date().toISOString().slice(0,10)} tanggal.value=today();
   function setConn(ok,msg){connDot.className='status-dot '+(ok?'ok':''); connText.innerText=msg}
   async function loadDeliveries(){if(!db){setConn(false,'Supabase belum dikonfigurasi');renderAll();return} const r=await db.from('deliveries').select('*').order('created_at',{ascending:false}); if(r.error){setConn(false,'Gagal konek: '+r.error.message);return} deliveries=r.data||[]; setConn(true,'Terhubung ke Supabase'); renderAll()}
